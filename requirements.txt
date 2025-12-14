@@ -1,0 +1,16 @@
+# core
+numpy
+opencv-python
+tqdm
+pillow
+
+# pytorch (Apple Silicon friendly)
+torch
+torchvision
+torchaudio
+
+# dataset / augmentation
+albumentations
+
+# config & utils
+pyyaml
