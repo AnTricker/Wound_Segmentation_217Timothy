@@ -1,7 +1,7 @@
 import os 
 import torch
 
-def save_checkpoint(path, model, optimizer, epoch, best_metrics):
+def save_checkpoint(path, model, optimizer, epoch, best_metrics=None):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     torch.save({
         "epoch": epoch,
@@ -11,7 +11,7 @@ def save_checkpoint(path, model, optimizer, epoch, best_metrics):
     }, path)
 
 
-def load_checkpoint(path, model, optimizer=None, map_location="cpu"):
+def load_checkpoint(path: str, model: torch.nn.Module, optimizer: torch.optim.Optimizer | None = None, map_location: str | torch.device = "cpu"):
     ckpt = torch.load(path, map_location=map_location)
     model.load_state_dict(ckpt["model_state"])
     if optimizer is not None and "optim_state" in ckpt:

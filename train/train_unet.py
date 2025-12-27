@@ -7,6 +7,8 @@ from datasets.wound_dataset import WoundDataset
 from models.unet.unet import UNet
 from utils.checkpoint import save_checkpoint, load_checkpoint
 
+import csv
+
 
 def main():
     # -----------------------------
@@ -123,7 +125,7 @@ def main():
             model=model,
             optimizer=optimizer,
             epoch=epoch + 1,
-            best_metric=best_loss
+            best_metrics=best_loss
         )
 
         # save best (by train loss for now; 之後我們會換成 val dice)
@@ -134,7 +136,7 @@ def main():
                 model=model,
                 optimizer=optimizer,
                 epoch=epoch + 1,
-                best_metric=best_loss
+                best_metrics=best_loss
             )
             print(f"✅ Best updated: {best_loss:.6f}")
 
