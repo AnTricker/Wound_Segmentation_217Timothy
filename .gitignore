@@ -4,12 +4,13 @@ __pycache__/
 *.pyc
 
 # Data
-data/raw/
-data/processed/
+data
 
 # Outputs
-outputs/
-*.pth
+results
+
+# Checkpoint
+checkpoints
 
 # OS
 .DS_Store

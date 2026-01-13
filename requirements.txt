@@ -3,6 +3,7 @@ numpy
 opencv-python
 tqdm
 pillow
+scikit-learn
 
 # pytorch (Apple Silicon friendly)
 torch

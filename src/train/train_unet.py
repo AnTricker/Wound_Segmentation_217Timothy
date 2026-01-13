@@ -42,7 +42,7 @@ def main():
     # 2. Hyperparams
     # -----------------------------
     batch_size = 2
-    num_epochs = 2
+    num_epochs = 50
     lr = 1e-4
     num_workers = 4
     val_percent = 0.2
