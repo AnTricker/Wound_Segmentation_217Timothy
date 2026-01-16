@@ -16,7 +16,7 @@ class UNet(nn.Module):
     # bilinear: 是否使用雙線性插值來放大圖片 (建議 True)
     
     def __init__(self, n_channels, n_classes, bilinear=True) -> None:
-        super(UNet, self).__init__()
+        super().__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear

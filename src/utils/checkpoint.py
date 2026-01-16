@@ -1,53 +1,44 @@
 import os
 import torch
-from typing import Tuple, Optional, Union
+import torch.nn as nn
+import shutil
 
-def save_checkpoint(path: str, model: torch.nn.Module, optimizer: torch.optim.Optimizer, epoch: int, best_metrics: Optional[float] = None) -> None:
+def save_checkpoint(state, is_best, checkpoint_dir, filename='last.pt'):
     """
-    儲存檢查點 (Checkpoint)。
+    儲存模型權重
+    Args:
+        state (dict): 要存的字典 (包含 model, optimizer, epoch, score)
+        is_best (bool): 這一輪是否是目前表現最好的
+        checkpoint_dir (str): 存檔資料夾路徑 (例如 'checkpoints/unet')
+        filename (str): 檔名 (預設存成 last.pt)
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    torch.save({
-        "epoch": epoch,
-        "model_state": model.state_dict(),
-        "optimizer_state": optimizer.state_dict(),
-        "best_metric": best_metrics,
-    }, path)
-
-
-def load_checkpoint(
-    path: str, 
-    model: torch.nn.Module, 
-    optimizer: Optional[torch.optim.Optimizer] = None, 
-    map_location: Union[str, torch.device] = "cpu"
-) -> Tuple[int, Optional[float]]:
-    """
-    載入檢查點。回傳 (start_epoch, best_metric)。
-    """
-    print(f"[INFO] Loading checkpoint: {path}")
-    ckpt = torch.load(path, map_location=map_location)
     
-    # 1. 載入模型權重
-    model.load_state_dict(ckpt["model_state"])
+    os.makedirs(checkpoint_dir, exist_ok=True)
     
-    # 2. 載入優化器狀態
-    if optimizer is not None:
-        if "optimizer_state" in ckpt:
-            optimizer.load_state_dict(ckpt["optimizer_state"])
-        elif "optim_state" in ckpt:
-            optimizer.load_state_dict(ckpt["optim_state"])
-        elif "optimizer" in ckpt:
-            optimizer.load_state_dict(ckpt["optimizer"])
-        else:
-            print("[WARNING] Optimizer state not found. Resuming with fresh optimizer.")
+    filepath = os.path.join(checkpoint_dir, filename)
+    torch.save(state, filepath)
+    
+    if is_best:
+        best_path = os.path.join(checkpoint_dir, "best.pt")
+        shutil.copy(filepath, best_path)
+        print(f"[CheckPoint] ✅ New best model saved! Score: {state.get('score', 0):.4f}")
 
-    epoch = ckpt.get("epoch", 0)
-    best_metric = ckpt.get("best_metric", None)
 
-    # ---------------------------------------------------------
-    # 👇 關鍵修正：如果讀到的是 Tensor，強制轉成 float
-    # ---------------------------------------------------------
-    if isinstance(best_metric, torch.Tensor):
-        best_metric = best_metric.item()
-
-    return epoch, best_metric
+def load_checkpoint(checkpoint_path, model, optimizer=None):
+    """
+    讀取模型權重
+    """
+    
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"❌ Checkpoint not found at: {checkpoint_path}")
+    
+    print(f"[CheckPoint] Loading from {checkpoint_path} ...")
+    
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    
+    model.load_state_dict(checkpoint["state_dict"])
+    
+    if optimizer and "optimizer" in checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer"])
+    
+    return checkpoint
