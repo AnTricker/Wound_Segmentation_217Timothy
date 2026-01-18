@@ -37,12 +37,10 @@ def train_one_epoch(model, train_loader, optimizer, scaler, loss_func, device, e
             loss = loss_func(logits, masks)
         
         # 5. 反向傳播 (Backward): 算出要怎麼修正
-        scaler.scale(loss).backward()
-        # loss.backward()
+        scaler.scale(loss).backward() # 原：loss.backward()
         
         # 6. 更新參數 (Step): 實際修正模型
-        scaler.step(optimizer)
-        # optimizer.step()
+        scaler.step(optimizer) # 原：optimizer.step()
         
         scaler.update()
         

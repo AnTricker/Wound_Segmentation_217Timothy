@@ -21,7 +21,7 @@ def save_checkpoint(state, is_best, checkpoint_dir, filename='last.pt'):
     if is_best:
         best_path = os.path.join(checkpoint_dir, "best.pt")
         shutil.copy(filepath, best_path)
-        print(f"[CheckPoint] ✅ New best model saved! Score: {state.get('score', 0):.4f}")
+        print(f"[CheckPoint] ✅ New best model saved! Dice Score: {state.get('dice', 0):.4f}. IoU Score: {state.get('iou', 0): .4f}")
 
 
 def load_checkpoint(checkpoint_path, model, optimizer=None):
