@@ -121,8 +121,9 @@ def main():
     loss_func = BCEDiceLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    if os.path.exists(checkpoint_dir):
-        load_checkpoint(os.path.join(checkpoint_dir, "last.pt"), model, optimizer)
+    checkpoint_path = os.path.join(checkpoint_dir, "last.pt")
+    if os.path.exists(checkpoint_path):
+        load_checkpoint(checkpoint_path, model, optimizer)
     
     # 5. 開始訓練
     best_score = 0.0
