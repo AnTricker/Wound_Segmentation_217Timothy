@@ -64,9 +64,10 @@ def main():
     os.makedirs(checkpoint_dir, exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
     log_path = f"{log_dir}/{args.run_name}.csv"
-    with open(log_path, mode="w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["epoch", "train_loss", "val_loss", "val_dice", "val_iou"])
+    if not os.path.exists(log_path):
+        with open(log_path, mode="w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["epoch", "train_loss", "val_loss", "val_dice", "val_iou"])
     
     # 2. 定義影像轉換 (Transforms)
     # 你的 Dataset 寫法裡，如果這裡傳入 transform，就會在 Dataset 內部被呼叫
@@ -128,14 +129,25 @@ def main():
     if torch.cuda.is_available() and args.device == 'cuda':
         compiled_model = torch.compile(model, mode="reduce-overhead")
     
-    checkpoint_path = os.path.join(checkpoint_dir, "last.pt")
-    if os.path.exists(checkpoint_path):
-        load_checkpoint(checkpoint_path, model, optimizer)
+    
+    best_score = 0.0
+    start_epoch = 1
+    
+    best_checkpoint_path = os.path.join(checkpoint_dir, "best.pt")
+    if os.path.exists(best_checkpoint_path):
+        best_ckpt = torch.load(best_checkpoint_path, map_location="cpu")
+        best_score = best_ckpt.get("dice", 0.0)
+        print(f"[INFO] Detected existing best model with Dice: {best_score:.4f}")
+    
+    checkpoint_resume_path = os.path.join(checkpoint_dir, "last.pt")
+    if os.path.exists(checkpoint_resume_path):
+        print(f"[INFO] Resuming training from {checkpoint_resume_path}")
+        load_checkpoint(checkpoint_resume_path, model, optimizer)
+        last_ckpt = torch.load(checkpoint_resume_path, map_location="cpu")
+        start_epoch = last_ckpt["epoch"] + 1
     
     # 5. 開始訓練
-    best_score = 0.0
-    
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         train_loss = train_one_epoch(compiled_model, train_loader=train_loader, optimizer=optimizer, scaler=scaler, loss_func=loss_func, device=args.device, epoch=epoch)
         
         val_dict = validate(compiled_model, val_loader, loss_func, args.device)
