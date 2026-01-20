@@ -46,7 +46,7 @@ def highlight_max(ax, x_data, y_data, color="lightcoral"):
 def main():
     args = get_args()
     
-    out_fig_dir = os.path.join(args.out_root, args.version)
+    out_fig_dir = os.path.join(args.out_root, args.version, args.run_name)
     log_path = os.path.join("logs", args.version, f"{args.run_name}.csv")
     if not os.path.exists(log_path):
         print(f"[Error] 找不到 Log 檔案：{log_path}")
@@ -85,7 +85,7 @@ def main():
     
     highlight_max(ax2, epochs, df["val_iou"])
     
-    save_path = os.path.join(out_fig_dir, f"plot_{args.run_name}")
+    save_path = os.path.join(out_fig_dir, f"plot")
     plt.savefig(save_path, dpi=300)
     print(f"✅ Plot saved to: {save_path}")
 

@@ -24,7 +24,6 @@ from src.utils import load_checkpoint, make_overlay, make_combine
 # ==========================================
 IMAGE_SIZE = 512
 
-
 def get_args():
     parser = argparse.ArgumentParser(description="Inference on images using U-Net")
     
@@ -63,8 +62,8 @@ def main():
     input_dir = os.path.join(args.in_root, args.dataset, args.split, "images")
     checkpoint_path = os.path.join("checkpoints", args.version, args.run_name, "best.pt")
     # 1. 建立輸出資料夾結構
-    pred_dir = os.path.join(args.out_root, "predictions", args.dataset)
-    viz_dir = os.path.join(args.out_root, "visualizations")
+    pred_dir = os.path.join(args.out_root, "predictions", args.version, args.run_name, args.dataset)
+    viz_dir = os.path.join(args.out_root, "visualizations", args.version, args.run_name)
     overlay_dir = os.path.join(viz_dir, "overlay", args.dataset)
     combine_dir = os.path.join(viz_dir, "combine", args.dataset)
     

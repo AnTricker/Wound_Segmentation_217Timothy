@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import csv
+import yaml
 import torch
 import torch.optim as optim
 from torch.amp.grad_scaler import GradScaler
@@ -23,31 +24,33 @@ from src.engine import train_one_epoch, validate
 # ==========================================
 # 1. 設定參數 (Configuration)
 # ==========================================
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 8       # 圖片大如果跑不動 (OOM)，改小成 2 或 1
-NUM_WORKERS = 8      # Mac 建議設 0，Linux Server 可以設 4 或 8
-IMAGE_HEIGHT = 512
-IMAGE_WIDTH = 512
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+IMAGE_SIZE = 512
 PIN_MEMORY = True
 
-# 資料路徑 (請確保你有這些資料夾)
+# 資料路徑
 DATA_ROOT_DIR = "data/processed"
 
 def get_args():
     parser = argparse.ArgumentParser()
     
-    # 必要參數：模型版本
+    # 必要參數：模型版本與資料集
     parser.add_argument("--version", type=str, required=True,
                         help="這次訓練的版本")
     parser.add_argument("--run_name", type=str, required=True,
                         help="這次訓練的名稱")
+    parser.add_argument("--dataset", type=str, nargs="+", required=True, 
+                        help="輸入一個或多個資料集名稱 (用空白隔開，如WoundSeg CO2Wound)")
     
     # 其他設定
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--epochs", type=int, default=50,
-                        help="輸入想訓練的epoch數")
-    parser.add_argument("--dataset", type=str, nargs="+", default=["WoundSeg", "CO2Wound"],
-                        help="輸入一個或多個資料集名稱 (用空白隔開)")
+                        help="輸入想訓練的 epoch 數")
+    parser.add_argument("--learning_rate", type=int, default=1e-4,
+                        help="輸入想訓練的學習數")
+    parser.add_argument("--batch_size", type=int, default=8,
+                        help="輸入想訓練的 batch size")
+    parser.add_argument("--num_workers", type=int, default=8,
+                        help="輸入想訓練的 worker 數")
     
     return parser.parse_args()
 
@@ -55,9 +58,21 @@ def main():
     args = get_args()
     seed_everything()
     torch.backends.cudnn.benchmark = True
-    print(f"[INFO] Using Device: {args.device}")
+    print(f"[INFO] Version: {args.version}")
+    print(f"[INFO] Using Device: {DEVICE}")
     print(f"[INFO] Using Datasets: {args.dataset}")
     
+    out_config_dir = os.path.join("results", "runs", args.version, args.run_name)
+    os.makedirs(out_config_dir, exist_ok=True)
+    config_path = os.path.join(out_config_dir, f"config.yaml")
+    
+    config_dict = vars(args)
+    config_dict["model_class"] = "UNet"
+    config_dict["loss_func"] = "BCEDiceLoss"
+    with open(config_path, 'w') as f:
+        yaml.dump(config_dict, f, sort_keys=False, indent=4)
+
+    print(f"[INFO] Configuration saved to: {config_path}\n")
     
     checkpoint_dir = os.path.join("checkpoints", args.version, args.run_name)
     log_dir = os.path.join("logs", args.version)
@@ -72,14 +87,14 @@ def main():
     # 2. 定義影像轉換/預處理 (Transforms)
     # 你的 Dataset 寫法裡，如果這裡傳入 transform，就會在 Dataset 內部被呼叫
     train_transform = A.Compose(transforms=[
-        A.Resize(height=IMAGE_HEIGHT, width=IMAGE_WIDTH),
+        A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
         A.Rotate(limit=35, p=1.0),
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.1),
     ])
     
     val_transform = A.Compose([
-        A.Resize(height=IMAGE_HEIGHT, width=IMAGE_WIDTH),
+        A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
     ])
     
     # 3. 準備資料集 (Dataset & DataLoader)
@@ -99,12 +114,12 @@ def main():
     )
     
     print(f"✅ Training samples: {len(train_ds)}")
-    print(f"✅ Validation samples: {len(val_ds)}")
+    print(f"✅ Validation samples: {len(val_ds)}\n")
     
     train_loader = DataLoader(
         train_ds,
-        batch_size=BATCH_SIZE,
-        num_workers=NUM_WORKERS,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
         pin_memory=PIN_MEMORY,
         persistent_workers=True,
         shuffle=True,
@@ -121,12 +136,12 @@ def main():
     
     # 4. 初始化模型
     print("[INFO] Initializing Model...")
-    model = UNet(n_channels=3, n_classes=1).to(args.device)
+    model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     compiled_model = model
     loss_func = BCEDiceLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    scaler = GradScaler(device="cuda", enabled=(args.device == "cuda"))
-    if torch.cuda.is_available() and args.device == 'cuda':
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    scaler = GradScaler(device="cuda", enabled=(DEVICE == "cuda"))
+    if torch.cuda.is_available() and DEVICE == 'cuda':
         compiled_model = torch.compile(model, mode="reduce-overhead")
     
     
@@ -141,16 +156,16 @@ def main():
     
     checkpoint_resume_path = os.path.join(checkpoint_dir, "last.pt")
     if os.path.exists(checkpoint_resume_path):
-        print(f"[INFO] Resuming training from {checkpoint_resume_path}")
+        print(f"[INFO] Resuming training from {checkpoint_resume_path}\n")
         load_checkpoint(checkpoint_resume_path, model, optimizer)
         last_ckpt = torch.load(checkpoint_resume_path, map_location="cpu")
         start_epoch = last_ckpt["epoch"] + 1
     
     # 5. 開始訓練
     for epoch in range(start_epoch, args.epochs + 1):
-        train_loss = train_one_epoch(compiled_model, train_loader=train_loader, optimizer=optimizer, scaler=scaler, loss_func=loss_func, device=args.device, epoch=epoch)
+        train_loss = train_one_epoch(compiled_model, train_loader=train_loader, optimizer=optimizer, scaler=scaler, loss_func=loss_func, device=DEVICE, epoch=epoch)
         
-        val_dict = validate(compiled_model, val_loader, loss_func, args.device)
+        val_dict = validate(compiled_model, val_loader, loss_func, DEVICE)
         val_loss = val_dict["val_loss"]
         val_dice = val_dict["val_dice"]
         val_iou = val_dict["val_iou"]

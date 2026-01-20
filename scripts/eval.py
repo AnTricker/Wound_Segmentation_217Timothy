@@ -32,7 +32,7 @@ def get_args():
                         help="要使用的模型版本")
     parser.add_argument("--run_name", type=str, required=True,
                         help="第幾次跑")
-    parser.add_argument("--datasets", type=str, required=True, nargs="+",
+    parser.add_argument("--dataset", type=str, required=True, nargs="+",
                         help="資料集名稱")
     
     # 輸入與輸出根目錄
@@ -56,11 +56,11 @@ def main():
     args = get_args()
     
     checkpoint_path = os.path.join("checkpoints", args.version, args.run_name, "best.pt")
-    output_json_dir = os.path.join(args.out_root, args.version)
+    output_json_dir = os.path.join(args.out_root, args.version, args.run_name)
     os.makedirs(output_json_dir, exist_ok=True)
-    output_json_path = os.path.join(output_json_dir, f"metrics_{args.run_name}.json")
+    output_json_path = os.path.join(output_json_dir, f"metrics.json")
     
-    print(f"[INFO] Dataset:    {args.datasets}")
+    print(f"[INFO] Dataset:    {args.dataset}")
     print(f"[INFO] Split:      {args.split}")
     print(f"[INFO] Checkpoint: {checkpoint_path}")
     print(f"[INFO] Device:     {args.device}")
@@ -84,7 +84,7 @@ def main():
     print(f"================ Evaluation Start ({args.split}) ================")
     
     # 3. 針對每一個 Dataset 跑迴圈
-    for ds in args.datasets:
+    for ds in args.dataset:
         try:
             dataset = SegmentationDataset(
                 root_dir=args.in_root,
