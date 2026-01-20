@@ -38,7 +38,7 @@ def get_args():
     # 輸入與輸出根目錄
     parser.add_argument("--in_root", type=str, default="data/processed",
                         help="輸入圖片的資料夾路徑")
-    parser.add_argument("--out_root", type=str, default="results/run",
+    parser.add_argument("--out_root", type=str, default="results/runs",
                         help="輸出結果的根目錄")
     
     # 其他設定
@@ -65,18 +65,18 @@ def main():
     print(f"[INFO] Checkpoint: {checkpoint_path}")
     print(f"[INFO] Device:     {args.device}")
     
-    # 1. 載入模型
+    # 1. 定義影像轉換/預處理
+    transform = A.Compose([
+        A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
+    ])
+    
+    # 2. 載入模型
     if not os.path.exists(checkpoint_path):
         print(f"[Error] Checkpoint not found: {checkpoint_path}")
         return
     print("[INFO] Loading model...")
     model = UNet(n_channels=3, n_classes=1).to(args.device)
     load_checkpoint(checkpoint_path, model)
-    
-    # 2. 準備 Dataset
-    transform = A.Compose([
-        A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
-    ])
     
     # 用來存最終結果的容器
     final_report = {}
@@ -141,7 +141,7 @@ def main():
             "mean_iou": float(mean_iou),
             "samples": len(dataset)
         }
-        
+    
     # 4. 計算全部資料集的總平均 (All)
     if len(final_report) > 0:
         all_dice = np.mean([d["mean_dice"] for d in final_report.values()])

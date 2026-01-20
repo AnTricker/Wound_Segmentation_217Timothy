@@ -69,7 +69,7 @@ def main():
     combine_dir = os.path.join(viz_dir, "combine", args.dataset)
     
     print(f"[INFO] Input Folder: {input_dir}")
-    print(f"[INFO] Output Root Folder: {args.output}")
+    print(f"[INFO] Output Root Folder: {args.out_root}")
     print(f"[INFO] Predict Mask Output Folder: {pred_dir}")
     print(f"[INFO] Overlay Image Output Folder: {overlay_dir}")
     print(f"[INFO] Combine Image Output Folder: {combine_dir}")
@@ -86,7 +86,13 @@ def main():
     os.makedirs(overlay_dir, exist_ok=True)
     os.makedirs(combine_dir, exist_ok=True)
     
-    # 2. 載入模型
+    # 2. 定義影像轉換/預處理
+    # 推論時只做 Resize & Normalize
+    transform = A.Compose([
+        A.Resize(height=512, width=512),
+    ])
+    
+    # 3. 載入模型
     if not os.path.exists(checkpoint_path):
         print(f"[Error] Checkpoint not found: {checkpoint_path}")
         return
@@ -94,12 +100,6 @@ def main():
     print("[INFO] Loading model...")
     model = UNet(n_channels=3, n_classes=1).to(args.device)
     load_checkpoint(checkpoint_path, model)
-    
-    # 3. 定義預處理
-    # 推論時只做 Resize & Normalize
-    transform = A.Compose([
-        A.Resize(height=512, width=512),
-    ])
     
     # 4. 抓圖片
     extensions = ["*.jpg", "*.jpeg", "*.png", "*.bmp"]
@@ -144,6 +144,7 @@ def main():
         cv2.imwrite(os.path.join(pred_dir, f"{name_no_ext}.png"), pred_mask * 255)
         
         img_vis = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
+        
         # b. 存 Visualization 的 Overlay
         overlay = make_overlay(img_vis, pred_mask)
         cv2.imwrite(os.path.join(overlay_dir, f"{name_no_ext}.png"), overlay)
@@ -151,7 +152,7 @@ def main():
         # c. 存 Visualization 的 Combine
         combine = make_combine(img_vis, pred_mask)
         cv2.imwrite(os.path.join(combine_dir, f"{name_no_ext}.png"), combine)
-    print(f"✅ All done! Results: {args.output}")
+    print(f"✅ All done! Results: {args.out_root}")
 
 
 if __name__ == "__main__":

@@ -69,7 +69,7 @@ def main():
             writer = csv.writer(f)
             writer.writerow(["epoch", "train_loss", "val_loss", "val_dice", "val_iou"])
     
-    # 2. 定義影像轉換 (Transforms)
+    # 2. 定義影像轉換/預處理 (Transforms)
     # 你的 Dataset 寫法裡，如果這裡傳入 transform，就會在 Dataset 內部被呼叫
     train_transform = A.Compose(transforms=[
         A.Resize(height=IMAGE_HEIGHT, width=IMAGE_WIDTH),
@@ -77,7 +77,7 @@ def main():
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.1),
     ])
-
+    
     val_transform = A.Compose([
         A.Resize(height=IMAGE_HEIGHT, width=IMAGE_WIDTH),
     ])
