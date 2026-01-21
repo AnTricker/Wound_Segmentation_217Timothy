@@ -22,6 +22,7 @@ from src.metrics.iou import calculate_iou
 # ==========================================
 # 1. 設定參數與參數解析器
 # ==========================================
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 IMAGE_SIZE = 512
 
 def get_args():
@@ -32,7 +33,7 @@ def get_args():
                         help="要使用的模型版本")
     parser.add_argument("--run_name", type=str, required=True,
                         help="第幾次跑")
-    parser.add_argument("--dataset", type=str, required=True, nargs="+",
+    parser.add_argument("--datasets", type=str, required=True, nargs="+",
                         help="資料集名稱")
     
     # 輸入與輸出根目錄
@@ -44,8 +45,6 @@ def get_args():
     # 其他設定
     parser.add_argument("--split", type=str, default="val",
                         help="要評估的清單 (test/val)")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
-                        help="使用設備")
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="二值化門檻")
     
@@ -60,10 +59,10 @@ def main():
     os.makedirs(output_json_dir, exist_ok=True)
     output_json_path = os.path.join(output_json_dir, f"metrics.json")
     
-    print(f"[INFO] Dataset:    {args.dataset}")
+    print(f"[INFO] Dataset:    {args.datasets}")
     print(f"[INFO] Split:      {args.split}")
     print(f"[INFO] Checkpoint: {checkpoint_path}")
-    print(f"[INFO] Device:     {args.device}")
+    print(f"[INFO] Device:     {DEVICE}")
     
     # 1. 定義影像轉換/預處理
     transform = A.Compose([
@@ -75,7 +74,7 @@ def main():
         print(f"[Error] Checkpoint not found: {checkpoint_path}")
         return
     print("[INFO] Loading model...")
-    model = UNet(n_channels=3, n_classes=1).to(args.device)
+    model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     load_checkpoint(checkpoint_path, model)
     
     # 用來存最終結果的容器
@@ -84,7 +83,7 @@ def main():
     print(f"================ Evaluation Start ({args.split}) ================")
     
     # 3. 針對每一個 Dataset 跑迴圈
-    for ds in args.dataset:
+    for ds in args.datasets:
         try:
             dataset = SegmentationDataset(
                 root_dir=args.in_root,
@@ -111,7 +110,7 @@ def main():
             pred_mask = infer_one_image(
                 model,
                 img_tensor,
-                args.device,
+                DEVICE,
                 args.threshold
             )
             

@@ -32,27 +32,39 @@ PIN_MEMORY = True
 DATA_ROOT_DIR = "data/processed"
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    conf_parser = argparse.ArgumentParser(add_help=False)
+    conf_parser.add_argument("--config", type=str, default=None, help="Path to config file")
+    known_args, remaining_args = conf_parser.parse_known_args()
+    
+    defaults = {}
+    if known_args.config and os.path.exists(known_args.config):
+        print(f"[INFO] Loading defaults from config: {known_args.config}")
+        with open(known_args.config, mode='r') as f:
+            defaults = yaml.safe_load(f)
+    
+    parser = argparse.ArgumentParser(parents=[conf_parser])
     
     # 必要參數：模型版本與資料集
     parser.add_argument("--version", type=str, required=True,
                         help="這次訓練的版本")
     parser.add_argument("--run_name", type=str, required=True,
                         help="這次訓練的名稱")
-    parser.add_argument("--dataset", type=str, nargs="+", required=True, 
+    parser.add_argument("--datasets", type=str, nargs="+", required=True, 
                         help="輸入一個或多個資料集名稱 (用空白隔開，如WoundSeg CO2Wound)")
     
-    # 其他設定
+    # Hyperparameter
     parser.add_argument("--epochs", type=int, default=50,
                         help="輸入想訓練的 epoch 數")
-    parser.add_argument("--learning_rate", type=int, default=1e-4,
+    parser.add_argument("--lr", type=int, default=1e-4,
                         help="輸入想訓練的學習數")
     parser.add_argument("--batch_size", type=int, default=8,
                         help="輸入想訓練的 batch size")
     parser.add_argument("--num_workers", type=int, default=8,
                         help="輸入想訓練的 worker 數")
     
-    return parser.parse_args()
+    args = parser.parse_args(remaining_args)
+    
+    return args
 
 def main():
     args = get_args()
@@ -60,7 +72,7 @@ def main():
     torch.backends.cudnn.benchmark = True
     print(f"[INFO] Version: {args.version}")
     print(f"[INFO] Using Device: {DEVICE}")
-    print(f"[INFO] Using Datasets: {args.dataset}")
+    print(f"[INFO] Using Datasets: {args.datasets}")
     
     out_config_dir = os.path.join("results", "runs", args.version, args.run_name)
     os.makedirs(out_config_dir, exist_ok=True)
@@ -98,17 +110,17 @@ def main():
     ])
     
     # 3. 準備資料集 (Dataset & DataLoader)
-    print(f"[INFO] Loading Data from {DATA_ROOT_DIR} with datasets: {args.dataset}...")
+    print(f"[INFO] Loading Data from {DATA_ROOT_DIR} with datasets: {args.datasets}...")
     train_ds = SegmentationDataset(
         root_dir=DATA_ROOT_DIR,
-        datasets=args.dataset,
+        datasets=args.datasets,
         split="train",
         transform=train_transform
     )
     
     val_ds = SegmentationDataset(
         root_dir=DATA_ROOT_DIR,
-        datasets=args.dataset,
+        datasets=args.datasets,
         split="val",
         transform=val_transform
     )
@@ -139,7 +151,7 @@ def main():
     model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     compiled_model = model
     loss_func = BCEDiceLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scaler = GradScaler(device="cuda", enabled=(DEVICE == "cuda"))
     if torch.cuda.is_available() and DEVICE == 'cuda':
         compiled_model = torch.compile(model, mode="reduce-overhead")
@@ -159,6 +171,7 @@ def main():
         print(f"[INFO] Resuming training from {checkpoint_resume_path}\n")
         load_checkpoint(checkpoint_resume_path, model, optimizer)
         last_ckpt = torch.load(checkpoint_resume_path, map_location="cpu")
+        print(f"Last Run: Epoch: {last_ckpt['epoch']}, Dice Score: {last_ckpt['dice']: .4f}, IoU Score: {last_ckpt['iou']: .4f}\n")
         start_epoch = last_ckpt["epoch"] + 1
     
     # 5. 開始訓練

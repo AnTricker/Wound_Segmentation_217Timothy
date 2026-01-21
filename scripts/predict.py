@@ -20,8 +20,9 @@ from src.utils import load_checkpoint, make_overlay, make_combine
 
 
 # ==========================================
-# 1. 設定參數與參數解析器 (Configuration and ArgParse)
+# 設定參數與參數解析器 (Configuration and ArgParse)
 # ==========================================
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 IMAGE_SIZE = 512
 
 def get_args():
@@ -32,7 +33,7 @@ def get_args():
                         help="要使用的模型版本")
     parser.add_argument("--run_name", type=str, required=True,
                         help="第幾次跑")
-    parser.add_argument("--dataset", type=str, required=True,
+    parser.add_argument("--datasets", type=str, required=True, nargs='+',
                         help="資料集名稱")
     
     # 輸入與輸出根目錄
@@ -41,16 +42,12 @@ def get_args():
     parser.add_argument("--out_root", type=str, default="results",
                         help="輸出結果的根目錄")
     
-    
-    
     # 其他設定
     parser.add_argument("--split", type=str, default="test",
                         help="要預測哪個切分? (預設 test)")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
-                        help="使用設備 (cuda/cpu/mps)")
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="判定傷口的門檻值 (0.0 ~ 1.0)")
-    parser.add_argument("--delete", type=bool, default=True,
+    parser.add_argument("--delete", type=int, default=1,
                         help="要不要刪掉舊的推論")
     
     return parser.parse_args()
@@ -59,99 +56,103 @@ def get_args():
 def main():
     args = get_args()
     
-    input_dir = os.path.join(args.in_root, args.dataset, args.split, "images")
     checkpoint_path = os.path.join("checkpoints", args.version, args.run_name, "best.pt")
-    # 1. 建立輸出資料夾結構
-    pred_dir = os.path.join(args.out_root, "predictions", args.version, args.run_name, args.dataset)
-    viz_dir = os.path.join(args.out_root, "visualizations", args.version, args.run_name)
-    overlay_dir = os.path.join(viz_dir, "overlay", args.dataset)
-    combine_dir = os.path.join(viz_dir, "combine", args.dataset)
     
-    print(f"[INFO] Input Folder: {input_dir}")
-    print(f"[INFO] Output Root Folder: {args.out_root}")
-    print(f"[INFO] Predict Mask Output Folder: {pred_dir}")
-    print(f"[INFO] Overlay Image Output Folder: {overlay_dir}")
-    print(f"[INFO] Combine Image Output Folder: {combine_dir}")
     print(f"[INFO] Checkpoint: {checkpoint_path}")
-    print(f"[INFO] Device: {args.device}")
+    print(f"[INFO] Device: {DEVICE}")
     print(f"[INFO] Threshold: {args.threshold}")
     
-    if args.delete and os.path.exists(pred_dir) and os.path.exists(overlay_dir) and os.path.exists(combine_dir):
-        shutil.rmtree(pred_dir)
-        shutil.rmtree(overlay_dir)
-        shutil.rmtree(combine_dir)
     
-    os.makedirs(pred_dir, exist_ok=True)
-    os.makedirs(overlay_dir, exist_ok=True)
-    os.makedirs(combine_dir, exist_ok=True)
-    
-    # 2. 定義影像轉換/預處理
+    # 1. 定義影像轉換/預處理
     # 推論時只做 Resize & Normalize
     transform = A.Compose([
         A.Resize(height=512, width=512),
     ])
     
-    # 3. 載入模型
+    # 2. 載入模型
     if not os.path.exists(checkpoint_path):
         print(f"[Error] Checkpoint not found: {checkpoint_path}")
         return
     
     print("[INFO] Loading model...")
-    model = UNet(n_channels=3, n_classes=1).to(args.device)
+    model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     load_checkpoint(checkpoint_path, model)
     
-    # 4. 抓圖片
-    extensions = ["*.jpg", "*.jpeg", "*.png", "*.bmp"]
-    img_paths = []
-    for ext in extensions:
-        img_paths.extend(glob.glob(os.path.join(input_dir, ext)))
-    
-    if not img_paths:
-        print(f"[Warn] No images found in {input_dir}")
-        return
-    
-    # 5. 開始推論整個資料夾的test
-    print(f"[INFO] Found {len(img_paths)} images. Processing...")
-    for img_path in tqdm(img_paths):
-        filename = os.path.basename(img_path)
-        name_no_ext = os.path.splitext(filename)[0]
+    # 資料準備與推論
+    for ds in args.datasets:
+        print(f"\n[INFO] Processing Dataset: {ds} ...")
         
-        # A. 讀圖
-        img_bgr = cv2.imread(img_path)
-        if img_bgr is None: continue
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        # A. 建立輸出資料夾結構
+        input_dir = os.path.join(args.in_root, ds, args.split, "images")
+        pred_dir = os.path.join(args.out_root, "predictions", args.version, args.run_name, ds)
+        viz_dir = os.path.join(args.out_root, "visualizations", args.version, args.run_name)
+        overlay_dir = os.path.join(viz_dir, "overlay", ds)
+        combine_dir = os.path.join(viz_dir, "combine", ds)
+        print(f"[INFO] Input Folder: {input_dir}")
+        print(f"[INFO] Predict Mask Output Folder: {pred_dir}")
+        print(f"[INFO] Overlay Image Output Folder: {overlay_dir}")
+        print(f"[INFO] Combine Image Output Folder: {combine_dir}")
+        if args.delete and os.path.exists(pred_dir) and os.path.exists(overlay_dir) and os.path.exists(combine_dir):
+            shutil.rmtree(pred_dir)
+            shutil.rmtree(overlay_dir)
+            shutil.rmtree(combine_dir)
         
-        # B. 預處理 - Step 1: Resize (用 Albumentations)
-        augmented = transform(image=img_rgb)
-        img_resized = augmented["image"] # 這時候還是 Numpy (512, 512, 3), 0-255
+        os.makedirs(pred_dir, exist_ok=True)
+        os.makedirs(overlay_dir, exist_ok=True)
+        os.makedirs(combine_dir, exist_ok=True)
         
-        img_float = img_resized.astype(np.float32) / 255.0
-        im_transpose = img_float.transpose((2, 0, 1)) # (H, W, C) -> (C, H, W)
-        img_tensor = torch.from_numpy(im_transpose)
+        # B. 抓圖片
+        extensions = ["*.jpg", "*.jpeg", "*.png", "*.bmp"]
+        img_paths = []
+        for ext in extensions:
+            img_paths.extend(glob.glob(os.path.join(input_dir, ext)))
         
-        # C. 核心推論
-        pred_mask = infer_one_image(
-            model, 
-            img_tensor, 
-            args.device, 
-            args.threshold
-        )
-        pred_mask = pred_mask.squeeze()
+        if not img_paths:
+            print(f"[Warn] No images found in {input_dir}")
+            continue
         
-        # D. 儲存結果
-        # a. 存 Predict Mask
-        cv2.imwrite(os.path.join(pred_dir, f"{name_no_ext}.png"), pred_mask * 255)
-        
-        img_vis = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
-        
-        # b. 存 Visualization 的 Overlay
-        overlay = make_overlay(img_vis, pred_mask)
-        cv2.imwrite(os.path.join(overlay_dir, f"{name_no_ext}.png"), overlay)
-        
-        # c. 存 Visualization 的 Combine
-        combine = make_combine(img_vis, pred_mask)
-        cv2.imwrite(os.path.join(combine_dir, f"{name_no_ext}.png"), combine)
-    print(f"✅ All done! Results: {args.out_root}")
+        # C. 開始推論整個資料夾的test
+        print(f"[INFO] Found {len(img_paths)} images. Processing...")
+        for img_path in tqdm(img_paths):
+            filename = os.path.basename(img_path)
+            name_no_ext = os.path.splitext(filename)[0]
+            
+            # a. 讀圖
+            img_bgr = cv2.imread(img_path)
+            if img_bgr is None: continue
+            img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+            
+            # b. 預處理 - Step 1: Resize (用 Albumentations)
+            augmented = transform(image=img_rgb)
+            img_resized = augmented["image"] # 這時候還是 Numpy (512, 512, 3), 0-255
+            
+            img_float = img_resized.astype(np.float32) / 255.0
+            im_transpose = img_float.transpose((2, 0, 1)) # (H, W, C) -> (C, H, W)
+            img_tensor = torch.from_numpy(im_transpose)
+            
+            # c. 核心推論
+            pred_mask = infer_one_image(
+                model, 
+                img_tensor, 
+                DEVICE, 
+                args.threshold
+            )
+            pred_mask = pred_mask.squeeze()
+            
+            # d. 儲存結果
+            # 存 Predict Mask
+            cv2.imwrite(os.path.join(pred_dir, f"{name_no_ext}.png"), pred_mask * 255)
+            
+            img_vis = cv2.cvtColor(img_resized, cv2.COLOR_RGB2BGR)
+            
+            # 存 Visualization 的 Overlay
+            overlay = make_overlay(img_vis, pred_mask)
+            cv2.imwrite(os.path.join(overlay_dir, f"{name_no_ext}.png"), overlay)
+            
+            # 存 Visualization 的 Combine
+            combine = make_combine(img_vis, pred_mask)
+            cv2.imwrite(os.path.join(combine_dir, f"{name_no_ext}.png"), combine)
+    print(f"\n✅ All done! Results: {args.out_root}")
 
 
 if __name__ == "__main__":

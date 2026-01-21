@@ -29,13 +29,30 @@ def get_args():
 def highlight_max(ax, x_data, y_data, color="lightcoral"):
     max_val = y_data.max()
     max_idx = y_data.idxmax()
-    max_epoch = x_data.max()
+    max_epoch = x_data[max_idx]
     
     ax.scatter(max_epoch, max_val, color=color, s=120, zorder=5, edgecolors='white', linewidth=2)
     
     ax.annotate(f'Max: {max_val:.4f}\n(Epoch {max_epoch})', 
                 xy=(max_epoch, max_val), 
                 xytext=(max_epoch, max_val - (max_val * 0.1)), # 文字稍微往下移一點，避免擋住線
+                color='black',
+                fontsize=10,
+                fontweight='bold',
+                arrowprops=dict(facecolor="black", shrink=0.05, width=1, headwidth=8),
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", alpha=0.9))
+
+
+def highlight_min(ax, x_data, y_data, color="lightcoral"):
+    mim_val = y_data.min()
+    min_idx = y_data.idxmin()
+    min_epoch = x_data[min_idx]
+    
+    ax.scatter(min_epoch, mim_val, color=color, s=120, zorder=5, edgecolors='white', linewidth=2)
+    
+    ax.annotate(f'Min: {mim_val:.4f}\n(Epoch {min_epoch})', 
+                xy=(min_epoch, mim_val), 
+                xytext=(min_epoch, mim_val - (mim_val * 0.1)), # 文字稍微往下移一點，避免擋住線
                 color='black',
                 fontsize=10,
                 fontweight='bold',
@@ -61,11 +78,11 @@ def main():
         return
     
     plt.style.use("ggplot")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 6))
     
     epochs = df["epoch"]
     
-    # 1. Val Dice Score Fig
+    # 1. Val Dice Score Curve
     ax1.plot(epochs, df["val_dice"], label="Val Dice", color="royalblue", linewidth=1, linestyle="-", marker="o")
     ax1.set_title(f"Validation Dice per Epoch ({args.version} - {args.run_name})")
     ax1.set_xlabel("Epoch")
@@ -75,7 +92,7 @@ def main():
     
     highlight_max(ax1, epochs, df["val_dice"])
     
-    # 2. Val IoU Score Fig
+    # 2. Val IoU Score Curve
     ax2.plot(epochs, df["val_iou"], label="Val IoU", color="royalblue", linewidth=1, linestyle="-", marker="o")
     ax2.set_title(f"Validation IoU per Epoch ({args.version} - {args.run_name})")
     ax2.set_xlabel("Epoch")
@@ -84,6 +101,18 @@ def main():
     ax2.grid(True)
     
     highlight_max(ax2, epochs, df["val_iou"])
+    
+    # 3. Loss Curve
+    ax3.plot(epochs, df["train_loss"], label="Train Loss", color="tab:orange", linewidth=2, linestyle="--")
+    ax3.plot(epochs, df["val_loss"], label="Val Loss", color="royalblue", linewidth=2, linestyle="-", marker="o", markersize=4)
+    ax3.set_title(f"Loss Curve ({args.version} - {args.run_name})")
+    ax3.set_xlabel("Epoch")
+    ax3.set_ylabel("Loss")
+    ax3.legend()
+    ax3.grid(True)
+    
+    highlight_min(ax3, epochs, df["val_loss"])
+    
     
     save_path = os.path.join(out_fig_dir, f"plot")
     plt.savefig(save_path, dpi=300)
