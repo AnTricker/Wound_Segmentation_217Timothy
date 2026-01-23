@@ -53,13 +53,13 @@ def get_args():
                         help="輸入一個或多個資料集名稱 (用空白隔開，如WoundSeg CO2Wound)")
     
     # Hyperparameter
-    parser.add_argument("--epochs", type=int, default=50,
+    parser.add_argument("--epochs", type=int,
                         help="輸入想訓練的 epoch 數")
-    parser.add_argument("--lr", type=int, default=1e-4,
+    parser.add_argument("--lr", type=float,
                         help="輸入想訓練的學習數")
-    parser.add_argument("--batch_size", type=int, default=8,
+    parser.add_argument("--batch_size", type=int,
                         help="輸入想訓練的 batch size")
-    parser.add_argument("--num_workers", type=int, default=8,
+    parser.add_argument("--num_workers", type=int,
                         help="輸入想訓練的 worker 數")
     
     parser.set_defaults(**defaults)
@@ -74,6 +74,11 @@ def main():
     print(f"[INFO] Version: {args.version}")
     print(f"[INFO] Using Device: {DEVICE}")
     print(f"[INFO] Using Datasets: {args.datasets}")
+    print(f"[INFO] Running Epochs: {args.epochs}")
+    print(f"[INFO] Using Learning Rate: {args.lr}")
+    print(f"[INFO] Using Batch Size: {args.batch_size}")
+    print(f"[INFO] Using Number of Workers: {args.num_workers}")
+    
     
     out_config_dir = os.path.join("results", "runs", args.version, args.run_name)
     os.makedirs(out_config_dir, exist_ok=True)
