@@ -45,11 +45,11 @@ def get_args():
     parser = argparse.ArgumentParser(parents=[conf_parser])
     
     # 必要參數：模型版本與資料集
-    parser.add_argument("--version", type=str, required=True,
+    parser.add_argument("--version", type=str,
                         help="這次訓練的版本")
-    parser.add_argument("--run_name", type=str, required=True,
+    parser.add_argument("--run_name", type=str,
                         help="這次訓練的名稱")
-    parser.add_argument("--datasets", type=str, nargs="+", required=True, 
+    parser.add_argument("--datasets", type=str, nargs="+", 
                         help="輸入一個或多個資料集名稱 (用空白隔開，如WoundSeg CO2Wound)")
     
     # Hyperparameter
