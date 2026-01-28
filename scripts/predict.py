@@ -66,28 +66,27 @@ def main():
     # 1. 定義影像轉換/預處理
     # 推論時只做 Resize & Normalize
     transform = A.Compose([
-        A.Resize(height=512, width=512),
+        A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
     ])
     
     # 2. 載入模型
     if not os.path.exists(checkpoint_path):
         print(f"[Error] Checkpoint not found: {checkpoint_path}")
         return
-    
     print("[INFO] Loading model...")
     model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     load_checkpoint(checkpoint_path, model)
     
-    # 資料準備與推論
+    # 3. 資料準備與推論
     for ds in args.datasets:
         print(f"\n[INFO] Processing Dataset: {ds} ...")
         
         # A. 建立輸出資料夾結構
         input_dir = os.path.join(args.in_root, ds, args.split, "images")
-        pred_dir = os.path.join(args.out_root, "predictions", args.version, args.run_name, ds)
+        pred_dir = os.path.join(args.out_root, "predictions", args.version, args.run_name, ds) # 最終輸出 dir
         viz_dir = os.path.join(args.out_root, "visualizations", args.version, args.run_name)
-        overlay_dir = os.path.join(viz_dir, "overlay", ds)
-        combine_dir = os.path.join(viz_dir, "combine", ds)
+        overlay_dir = os.path.join(viz_dir, "overlay", ds) # 最終輸出 dir
+        combine_dir = os.path.join(viz_dir, "combine", ds) # 最終輸出 dir
         print(f"[INFO] Input Folder: {input_dir}")
         print(f"[INFO] Predict Mask Output Folder: {pred_dir}")
         print(f"[INFO] Overlay Image Output Folder: {overlay_dir}")
@@ -117,7 +116,7 @@ def main():
             filename = os.path.basename(img_path)
             name_no_ext = os.path.splitext(filename)[0]
             
-            # a. 讀圖
+            # a. 讀圖與轉換色彩空間
             img_bgr = cv2.imread(img_path)
             if img_bgr is None: continue
             img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)

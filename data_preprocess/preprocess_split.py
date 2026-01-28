@@ -8,7 +8,6 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
 
-
 RAW_ROOT = "data/raw"
 LABELED_ROOT = f"{RAW_ROOT}/labeled"
 TEST_ROOT = f"{RAW_ROOT}/test"
@@ -113,7 +112,7 @@ def process_folder(dataset_name, subset_type, input_img_dir, input_mask_dir):
         basename, _ = os.path.splitext(fname)
 
         candidate = [
-            os.path.join(input_mask_dir, fname),                   # 1. 完全同名 (image.jpg 對 image.jpg)
+            os.path.join(input_mask_dir, fname),                  # 1. 完全同名 (image.jpg 對 image.jpg)
             os.path.join(input_mask_dir, basename + ".png"),      # 2. 同名但副檔名是 png (常見：圖片有壓縮，Mask 無壓縮)
             os.path.join(input_mask_dir, basename + ".jpg")       # 3. 同名但副檔名是 jpg
         ]

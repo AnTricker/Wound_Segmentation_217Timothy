@@ -106,9 +106,15 @@ def main():
     # 你的 Dataset 寫法裡，如果這裡傳入 transform，就會在 Dataset 內部被呼叫
     train_transform = A.Compose(transforms=[
         A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
-        A.Rotate(limit=35, p=1.0),
+        
+        # 幾何變換
+        A.Rotate(limit=35, p=0.5),
         A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.1),
+        A.VerticalFlip(p=0.5),
+        
+        # 色彩增強
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=0.5),
     ])
     
     val_transform = A.Compose([

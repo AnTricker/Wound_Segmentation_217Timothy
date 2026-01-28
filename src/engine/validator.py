@@ -28,7 +28,7 @@ def validate(model, val_loader, loss_func, device):
     with torch.no_grad():
         loop = tqdm(val_loader, desc="Validating")
         
-        for batch_idx, (imgs, masks) in enumerate(loop):
+        for imgs, masks in loop:
             imgs = imgs.to(device)
             masks = masks.to(device)
             
@@ -39,7 +39,7 @@ def validate(model, val_loader, loss_func, device):
             loss = loss_func(logits, masks)
             running_loss += loss.item()
             
-            
+            # 把 logits 轉乘 sigmoid，再轉乘預測值。用來計算 dice 與 iou
             probs = torch.sigmoid(logits)
             preds = (probs > 0.5).float()
             
