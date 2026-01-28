@@ -11,6 +11,7 @@ data
 
 # Outputs
 results
+result_single
 
 # Checkpoint and Logs
 checkpoints
