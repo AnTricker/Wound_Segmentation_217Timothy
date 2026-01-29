@@ -216,9 +216,10 @@ def main():
         
         if len(data) > 0:
             # 2. 黃金比例切分 (Train/Val Split)
-            # test_size=0.1 代表切出 10% 給驗證集 (Val)，剩下 90% 給訓練集 (Train)
+            #run4 改成 Train/Val 8:2
+            # test_size=0.2 代表切出 20% 給驗證集 (Val)，剩下 80% 給訓練集 (Train)
             # random_state=42 確保每次切出來的結果都一樣
-            train, val = train_test_split(data, test_size=0.1, random_state=42)
+            train, val = train_test_split(data, test_size=0.2, random_state=42)
             
             # 3. 實際存檔 (把記憶體寫入硬碟)
             # 這時候才會產生 data/processed/WoundSeg/train/images/WS_001.png

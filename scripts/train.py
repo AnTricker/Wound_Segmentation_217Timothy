@@ -72,6 +72,7 @@ def main():
     seed_everything()
     torch.backends.cudnn.benchmark = True
     print(f"[INFO] Version: {args.version}")
+    print(f"[INFO] Running Name: {args.run_name}")
     print(f"[INFO] Using Device: {DEVICE}")
     print(f"[INFO] Using Datasets: {args.datasets}")
     print(f"[INFO] Running Epochs: {args.epochs}")
@@ -114,7 +115,7 @@ def main():
         
         # 色彩增強 (add in run3)
         A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
-        A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=0.5),
+        A.RGBShift(r_shift_limit=20, g_shift_limit=20, b_shift_limit=20, p=0.5),
     ])
     
     val_transform = A.Compose([
@@ -127,14 +128,16 @@ def main():
         root_dir=DATA_ROOT_DIR,
         datasets=args.datasets,
         split="train",
-        transform=train_transform
+        transform=train_transform,
+        cache_data=True
     )
     
     val_ds = SegmentationDataset(
         root_dir=DATA_ROOT_DIR,
         datasets=args.datasets,
         split="val",
-        transform=val_transform
+        transform=val_transform,
+        cache_data=True
     )
     
     print(f"✅ Training samples: {len(train_ds)}")
