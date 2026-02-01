@@ -15,7 +15,7 @@ sys.path.append(root_dir)
 
 from src.models.unet import UNet
 from src.datasets import SegmentationDataset
-from src.losses import BCEDiceLoss
+from src.losses import BCEDiceLoss, BCETverskyLoss
 from src.utils.seed import seed_everything
 from src.utils.checkpoint import save_checkpoint, load_checkpoint
 from src.engine import train_one_epoch, validate
@@ -166,7 +166,7 @@ def main():
     print("[INFO] Initializing Model...")
     model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     compiled_model = model
-    loss_func = BCEDiceLoss()
+    loss_func = BCETverskyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scaler = GradScaler(device="cuda", enabled=(DEVICE == "cuda"))
     if torch.cuda.is_available() and DEVICE == 'cuda':
