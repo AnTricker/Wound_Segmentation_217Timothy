@@ -1,1 +1,1 @@
-from .bcd_dice_loss import DiceLoss, BCEDiceLoss
+from .bce_dice_loss import DiceLoss, BCEDiceLoss

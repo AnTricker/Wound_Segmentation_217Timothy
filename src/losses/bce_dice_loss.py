@@ -38,12 +38,12 @@ class BCEDiceLoss(nn.Module):
     結合 BCE (像素級分類精準度) + Dice (整體形狀重疊率)
     """
     
-    def __init__(self, bce_weight=0.5):
+    def __init__(self, smooth=1e-6, bce_weight=0.5):
         super().__init__()
         self.bce_weight = bce_weight
         
         self.bce = nn.BCEWithLogitsLoss()
-        self.dice = DiceLoss()
+        self.dice = DiceLoss(smooth=smooth)
     
     def forward(self, logits, target):
         loss_bce = self.bce(logits, target)
