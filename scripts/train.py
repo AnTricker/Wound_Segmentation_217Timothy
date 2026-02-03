@@ -198,12 +198,14 @@ def main():
         val_loss = val_dict["val_loss"]
         val_dice = val_dict["val_dice"]
         val_iou = val_dict["val_iou"]
+        val_recall = val_dict["val_recall"]
         
         print(f"Epoch [{epoch}/{args.epochs}] | "
               f"Train Loss: {train_loss:.4f} | "
               f"Val Loss: {val_loss:.4f} | "
               f"Val Dice: {val_dice:.4f} | "
-              f"Val IoU: {val_iou:.4f} | ")
+              f"Val IoU: {val_iou:.4f} | "
+              f"Val Recall: {val_recall:.4f} | ")
         
         is_best = val_dice > best_score
         if is_best:
@@ -211,14 +213,15 @@ def main():
         
         with open(log_path, mode="a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([f"{epoch}", f"{train_loss: .4f}", f"{val_loss: .4f}", f"{val_dice: .4f}", f"{val_iou: .4f}"])
+            writer.writerow([f"{epoch}", f"{train_loss: .4f}", f"{val_loss: .4f}", f"{val_dice: .4f}", f"{val_iou: .4f}", f"{val_recall: .4f}"])
         
         checkpoint = {
             "epoch": epoch,
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict(),
             "dice": val_dice,
-            "iou": val_iou
+            "iou": val_iou,
+            "recall": val_recall
         }
         
         save_checkpoint(checkpoint, is_best, checkpoint_dir)
