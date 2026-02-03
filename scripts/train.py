@@ -101,7 +101,7 @@ def main():
     if not os.path.exists(log_path):
         with open(log_path, mode="w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["epoch", "train_loss", "val_loss", "val_dice", "val_iou"])
+            writer.writerow(["epoch", "train_loss", "val_loss", "val_dice", "val_iou", "val_recall"])
     
     # 2. 定義影像轉換/預處理 (Transforms)
     # 你的 Dataset 寫法裡，如果這裡傳入 transform，就會在 Dataset 內部被呼叫
@@ -167,7 +167,7 @@ def main():
     model = UNet(n_channels=3, n_classes=1).to(DEVICE)
     compiled_model = model
     loss_func = BCETverskyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     scaler = GradScaler(device="cuda", enabled=(DEVICE == "cuda"))
     if torch.cuda.is_available() and DEVICE == 'cuda':
         compiled_model = torch.compile(model, mode="reduce-overhead")
